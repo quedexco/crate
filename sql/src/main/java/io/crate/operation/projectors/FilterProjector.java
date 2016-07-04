@@ -38,7 +38,7 @@ public class FilterProjector extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         for (CollectExpression<Row, ?> collectExpression : collectExpressions) {
             collectExpression.setNextRow(row);
         }
@@ -47,7 +47,7 @@ public class FilterProjector extends AbstractProjector {
         if (InputCondition.matches(condition)) {
             return downstream.setNextRow(row);
         }
-        return true;
+        return Result.CONTINUE;
     }
 
     @Override

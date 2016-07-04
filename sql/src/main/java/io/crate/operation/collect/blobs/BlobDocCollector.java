@@ -22,7 +22,6 @@
 package io.crate.operation.collect.blobs;
 
 import io.crate.blob.BlobContainer;
-import io.crate.exceptions.JobKilledException;
 import io.crate.operation.Input;
 import io.crate.operation.InputRow;
 import io.crate.operation.RowUpstream;
@@ -105,7 +104,7 @@ public class BlobDocCollector implements CrateCollector, RowUpstream {
             }
             //noinspection SimplifiableIfStatement
             if (InputCondition.matches(condition)) {
-                return downstream.setNextRow(row);
+                return downstream.setNextRow(row) == RowReceiver.Result.CONTINUE;
             }
             return true;
         }

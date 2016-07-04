@@ -110,17 +110,22 @@ public class RowMergers {
         }
 
         @Override
-        public final boolean setNextRow(Row row) {
+        public final Result setNextRow(Row row) {
             if (downstreamFinished) {
-                return false;
+                return Result.STOP;
             }
             synchronized (lock) {
-                boolean wantMore = synchronizedSetNextRow(row);
-                if (!wantMore) {
-                    pauseFifo.clear();
-                    return false;
+                Result result = synchronizedSetNextRow(row);
+                switch (result) {
+                    case CONTINUE:
+                        return Result.CONTINUE;
+                    case STOP:
+                        pauseFifo.clear();
+                        return Result.STOP;
+
+                    default:
+                        throw new AssertionError("Unrecognized setNextRow result: " + result);
                 }
-                return true;
             }
         }
 
@@ -144,10 +149,10 @@ public class RowMergers {
          *                                                     }
          *                                                     u2 pauses
          */
-        boolean synchronizedSetNextRow(Row row) {
+        Result synchronizedSetNextRow(Row row) {
             if (paused) {
                 pauseFifo.add(row.materialize());
-                return true;
+                return Result.CONTINUE;
             } else {
                 assert pauseFifo.size() == 0
                     : "resume should consume pauseFifo first before delegating resume to upstreams";
@@ -221,20 +226,25 @@ public class RowMergers {
             if (!pauseFifo.isEmpty()) {
                 // clear pauseFifo first, otherwise it could grow very large
                 delegate.setUpstream(topRowUpstream);
+
+                loop:
                 while ((row = pauseFifo.poll()) != null) {
                     sharedRow.cells(row);
-                    boolean wantMore = delegate.setNextRow(sharedRow);
+                    Result result = delegate.setNextRow(sharedRow);
                     if (topRowUpstream.shouldPause()) {
                         delegate.setUpstream(this);
                         topRowUpstream.pauseProcessed();
                         return;
                     }
-                    if (!wantMore) {
-                        downstreamFinished = true;
-                        pauseFifo.clear();
-                        // resume upstreams anyway so that they can finish and cleanup resources
-                        // they'll receive false on the next setNextRow call
-                        break;
+                    switch (result) {
+                        case CONTINUE:
+                            break;
+                        case STOP:
+                            downstreamFinished = true;
+                            pauseFifo.clear();
+                            // resume upstreams anyway so that they can finish and cleanup resources
+                            // they'll receive false on the next setNextRow call
+                            break loop;
                     }
                 }
                 delegate.setUpstream(this);

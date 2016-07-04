@@ -89,7 +89,7 @@ class InterceptingRowReceiver implements RowReceiver, FutureCallback<Void> {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         return resultReceiver.setNextRow(row);
     }
 

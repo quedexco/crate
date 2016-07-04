@@ -47,13 +47,13 @@ public class SingleBucketBuilder implements RowReceiver {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         try {
             bucketBuilder.add(row);
         } catch (Throwable e) {
             Throwables.propagate(e);
         }
-        return true;
+        return Result.CONTINUE;
     }
 
     public ListenableFuture<Bucket> result() {

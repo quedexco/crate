@@ -192,13 +192,18 @@ public class MultiShardScoreDocCollector implements CrateCollector {
         while (pagingIterator.hasNext()) {
             Row row = pagingIterator.next();
 
-            boolean wantMore = rowReceiver.setNextRow(row);
-            if (!wantMore) {
-                return Result.FINISHED;
-            }
+            RowReceiver.Result result = rowReceiver.setNextRow(row);
             if (topRowUpstream.shouldPause()) {
                 topRowUpstream.pauseProcessed();
                 return Result.PAUSED;
+            }
+            switch (result) {
+                case CONTINUE:
+                    break;
+                case STOP:
+                    return Result.FINISHED;
+                default:
+                    throw new AssertionError("Unrecognized setNextRow result: " + result);
             }
         }
         return Result.EXHAUSTED;

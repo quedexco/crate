@@ -141,14 +141,14 @@ public class FetchProjector extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         Object[] cells = row.materialize();
         collectRowContext.inputRow().cells = cells;
         for (int i : collectRowContext.docIdPositions()) {
             context.require((long) cells[i]);
         }
         inputValues.add(cells);
-        return true;
+        return Result.CONTINUE;
     }
 
     private void sendRequests() {
@@ -220,6 +220,7 @@ public class FetchProjector extends AbstractProjector {
         final ArrayBackedRow[] partitionRows = collectRowContext.partitionRows();
         final int[] docIdPositions = collectRowContext.docIdPositions();
 
+        loop:
         for (Object[] cells : inputValues) {
             inputRow.cells = cells;
             for (int i = 0; i < docIdPositions.length; i++) {
@@ -232,9 +233,15 @@ public class FetchProjector extends AbstractProjector {
                 fetchRows[i].cells = readerBucket.get(docId);
                 assert !readerBucket.fetchRequired() || fetchRows[i].cells != null;
             }
-            boolean wantsMore = downstream.setNextRow(outputRow);
-            if (!wantsMore) {
-                break;
+            Result result = downstream.setNextRow(outputRow);
+            switch (result) {
+                case CONTINUE:
+                    break;
+                case STOP:
+                    break loop;
+
+                default:
+                    throw new AssertionError("Unrecognized setNextRow result: " + result);
             }
         }
         finishDownstream();

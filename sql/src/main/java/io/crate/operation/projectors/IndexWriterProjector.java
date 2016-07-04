@@ -127,14 +127,17 @@ public class IndexWriterProjector extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         for (CollectExpression<Row, ?> collectExpression : collectExpressions) {
             collectExpression.setNextRow(row);
         }
         rowShardResolver.setNextRow(row);
         ShardUpsertRequest.Item item = new ShardUpsertRequest.Item(
                 rowShardResolver.id(), null, new Object[] { sourceInput.value() }, null);
-        return bulkShardProcessor.add(indexNameResolver.get(), item, rowShardResolver.routing());
+        if (bulkShardProcessor.add(indexNameResolver.get(), item, rowShardResolver.routing())) {
+            return Result.CONTINUE;
+        }
+        return Result.STOP;
     }
 
     @Override

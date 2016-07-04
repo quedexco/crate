@@ -104,7 +104,7 @@ public abstract class AbstractProjector implements Projector {
         private static final String STATE_ERROR = "downstream not set";
 
         @Override
-        public boolean setNextRow(Row row) {
+        public Result setNextRow(Row row) {
             throw new IllegalStateException(STATE_ERROR);
         }
 

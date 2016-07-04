@@ -79,9 +79,9 @@ public class CollectingRowReceiver implements RowReceiver, ResultReceiver {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         rows.add(row.materialize());
-        return true;
+        return Result.CONTINUE;
     }
 
     @Override
@@ -157,12 +157,12 @@ public class CollectingRowReceiver implements RowReceiver, ResultReceiver {
         }
 
         @Override
-        public boolean setNextRow(Row row) {
-            boolean wantsMore = super.setNextRow(row);
+        public Result setNextRow(Row row) {
+            Result wantsMore = super.setNextRow(row);
             numRows++;
             //noinspection SimplifiableIfStatement
             if (numRows >= limit) {
-                return false;
+                return Result.STOP;
             }
             return wantsMore;
         }
@@ -178,12 +178,12 @@ public class CollectingRowReceiver implements RowReceiver, ResultReceiver {
         }
 
         @Override
-        public boolean setNextRow(Row row) {
-            boolean wantsMore = super.setNextRow(row);
+        public Result setNextRow(Row row) {
+            Result wantsMore = super.setNextRow(row);
             numRows++;
             if (numRows == pauseAfter) {
                 upstream.pause();
-                return true;
+                return Result.CONTINUE;
             }
             return wantsMore;
         }

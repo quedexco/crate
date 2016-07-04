@@ -233,9 +233,14 @@ public class FileReadingCollector implements CrateCollector, RowUpstream {
                     continue;
                 }
                 collectorContext.lineContext().rawSource(line.getBytes(StandardCharsets.UTF_8));
-                if (!downstream.setNextRow(row)) {
-                    // stop collecting
-                    return false;
+                RowReceiver.Result result = downstream.setNextRow(row);
+                switch (result) {
+                    case CONTINUE:
+                        break;
+                    case STOP:
+                        return false;
+                    default:
+                        throw new AssertionError("unhandeld setNextRow result: " + result);
                 }
             }
         } catch (SocketTimeoutException e) {

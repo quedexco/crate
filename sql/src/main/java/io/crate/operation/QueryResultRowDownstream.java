@@ -47,28 +47,28 @@ public class QueryResultRowDownstream implements RowReceiver, ResultReceiver {
     private final SettableFuture<TaskResult> result;
     private final List<Object[]> rows = new ArrayList<>();
     private CompletionListener listener = CompletionListener.NO_OP;
-    private boolean shouldContinue = true;
+    private Result nextRowResult = Result.CONTINUE;
 
     public QueryResultRowDownstream(SettableFuture<TaskResult> result) {
         this.result = result;
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         rows.add(row.materialize());
-        return shouldContinue;
+        return nextRowResult;
     }
 
     @Override
     public void finish() {
-        shouldContinue = false;
+        nextRowResult = Result.STOP;
         result.set(new QueryResult(new CollectionBucket(rows)));
         listener.onSuccess(null);
     }
 
     @Override
     public void fail(@Nonnull Throwable throwable) {
-        shouldContinue = false;
+        nextRowResult = Result.STOP;
         result.setException(throwable);
         listener.onFailure(throwable);
     }

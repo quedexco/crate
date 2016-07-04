@@ -29,6 +29,11 @@ import java.util.Set;
 
 public interface RowReceiver {
 
+    enum Result {
+        CONTINUE,
+        STOP
+    }
+
     /**
      * Feed the downstream with the next input row.
      * If the downstream does not need any more rows, it returns <code>false</code>,
@@ -43,7 +48,7 @@ public interface RowReceiver {
      *            setNextRow call.
      * @return false if the downstream does not need any more rows, true otherwise.
      */
-    boolean setNextRow(Row row);
+    Result setNextRow(Row row);
 
     /**
      * Called from the upstream to indicate that all rows are sent.

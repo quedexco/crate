@@ -157,10 +157,10 @@ public class WriterProjector extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         rowWriter.write(row);
         counter.incrementAndGet();
-        return true;
+        return Result.CONTINUE;
     }
 
     @Override

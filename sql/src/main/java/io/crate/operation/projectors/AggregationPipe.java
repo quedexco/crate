@@ -60,7 +60,7 @@ public class AggregationPipe extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         for (CollectExpression<Row, ?> collectExpression : collectExpressions) {
             collectExpression.setNextRow(row);
         }
@@ -68,7 +68,7 @@ public class AggregationPipe extends AbstractProjector {
             Aggregator aggregator = aggregators[i];
             states[i] = aggregator.processRow(states[i]);
         }
-        return true;
+        return Result.CONTINUE;
     }
 
     @Override

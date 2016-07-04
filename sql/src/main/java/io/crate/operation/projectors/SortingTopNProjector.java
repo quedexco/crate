@@ -76,7 +76,7 @@ public class SortingTopNProjector extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         for (CollectExpression<Row, ?> collectExpression : collectExpressions) {
             collectExpression.setNextRow(row);
         }
@@ -88,7 +88,7 @@ public class SortingTopNProjector extends AbstractProjector {
             spare[i++] = input.value();
         }
         spare = pq.insertWithOverflow(spare);
-        return true;
+        return Result.CONTINUE;
     }
 
     @Override

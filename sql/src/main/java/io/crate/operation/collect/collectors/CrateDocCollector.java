@@ -62,7 +62,6 @@ public class CrateDocCollector implements CrateCollector {
     private final SimpleCollector luceneCollector;
     private final TopRowUpstream upstreamState;
     private final State state = new State();
-    private boolean killed;
     private final boolean doScores;
 
     public CrateDocCollector(final CrateSearchContext searchContext,
@@ -240,7 +239,7 @@ public class CrateDocCollector implements CrateCollector {
         LeafReaderContext leaf;
     }
 
-    static class LuceneDocCollector extends SimpleCollector {
+    private static class LuceneDocCollector extends SimpleCollector {
 
         private final RamAccountingContext ramAccountingContext;
         private final TopRowUpstream topRowUpstream;
@@ -249,12 +248,12 @@ public class CrateDocCollector implements CrateCollector {
         private final Row inputRow;
         private final LuceneCollectorExpression[] expressions;
 
-        public LuceneDocCollector(RamAccountingContext ramAccountingContext,
-                                  TopRowUpstream topRowUpstream,
-                                  RowReceiver rowReceiver,
-                                  boolean doScores,
-                                  Row inputRow,
-                                  Collection<? extends LuceneCollectorExpression<?>> expressions) {
+        LuceneDocCollector(RamAccountingContext ramAccountingContext,
+                           TopRowUpstream topRowUpstream,
+                           RowReceiver rowReceiver,
+                           boolean doScores,
+                           Row inputRow,
+                           Collection<? extends LuceneCollectorExpression<?>> expressions) {
             this.ramAccountingContext = ramAccountingContext;
             this.topRowUpstream = topRowUpstream;
             this.rowReceiver = rowReceiver;
@@ -284,12 +283,17 @@ public class CrateDocCollector implements CrateCollector {
             for (LuceneCollectorExpression<?> expression : expressions) {
                 expression.setNextDocId(doc);
             }
-            boolean wantMore = rowReceiver.setNextRow(inputRow);
+            RowReceiver.Result result = rowReceiver.setNextRow(inputRow);
             if (topRowUpstream.shouldPause()) {
                 throw CollectionPauseException.INSTANCE;
             }
-            if (!wantMore) {
-                throw CollectionFinishedEarlyException.INSTANCE;
+            switch (result) {
+                case CONTINUE:
+                    break;
+                case STOP:
+                    throw CollectionFinishedEarlyException.INSTANCE;
+                default:
+                    throw new AssertionError("Unrecognized setNextRow result: " + result);
             }
         }
 
@@ -317,7 +321,7 @@ public class CrateDocCollector implements CrateCollector {
         private final Scorer scorer;
         private final DocIdSetIterator iterator;
 
-        public DefaultBulkScorer(Scorer scorer) {
+        DefaultBulkScorer(Scorer scorer) {
             this.scorer = scorer;
             this.iterator = scorer.iterator();
         }

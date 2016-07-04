@@ -241,8 +241,14 @@ public class ESGetTask extends EsJobContextTask implements RowUpstream {
                         continue;
                     }
                     row.setCurrent(response.getResponse());
-                    if (!downstream.setNextRow(row)) {
-                        return;
+                    RowReceiver.Result result = downstream.setNextRow(row);
+                    switch (result) {
+                        case CONTINUE:
+                            break;
+                        case STOP:
+                            return;
+                        default:
+                            throw new AssertionError("Unrecognized setNextRow result: " + result);
                     }
                 }
                 downstream.finish();

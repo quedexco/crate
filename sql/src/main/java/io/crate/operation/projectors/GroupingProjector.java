@@ -93,9 +93,9 @@ public class GroupingProjector extends AbstractProjector {
 
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         if (killed) {
-            return false;
+            return Result.STOP;
         }
         return grouper.setNextRow(row);
     }
@@ -153,7 +153,7 @@ public class GroupingProjector extends AbstractProjector {
     }
 
     private interface Grouper extends AutoCloseable {
-        boolean setNextRow(final Row row);
+        Result setNextRow(final Row row);
         void finish();
         void kill(Throwable t);
     }
@@ -179,7 +179,7 @@ public class GroupingProjector extends AbstractProjector {
         }
 
         @Override
-        public boolean setNextRow(Row row) {
+        public Result setNextRow(Row row) {
             for (CollectExpression collectExpression : collectExpressions) {
                 collectExpression.setNextRow(row);
             }
@@ -205,7 +205,7 @@ public class GroupingProjector extends AbstractProjector {
                 }
             }
 
-            return true;
+            return Result.CONTINUE;
         }
 
         @Override
@@ -282,7 +282,7 @@ public class GroupingProjector extends AbstractProjector {
         }
 
         @Override
-        public boolean setNextRow(Row row) {
+        public Result setNextRow(Row row) {
             for (CollectExpression collectExpression : collectExpressions) {
                 collectExpression.setNextRow(row);
             }
@@ -320,7 +320,7 @@ public class GroupingProjector extends AbstractProjector {
                 }
             }
 
-            return true;
+            return Result.CONTINUE;
         }
 
         @Override

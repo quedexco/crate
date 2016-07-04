@@ -227,7 +227,7 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
         private boolean done = false;
 
         @Override
-        public boolean setNextRow(Row row) {
+        public Result setNextRow(Row row) {
             assert !done : "shouldn't receive a row if finished";
             State rightState = right.state.get();
             LOGGER.trace("[{}] LEFT downstream received a row {}, rightState: {}", phaseId, row, rightState);
@@ -237,7 +237,7 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
                         lastRow = new RowN(row.materialize());
                         upstream.pause();
                         state.set(State.PAUSED);
-                        return true;
+                        return Result.CONTINUE;
                     } else {
                         rightState = waitForStateChange(right.state);
                         return handlePauseOrFinished(row, rightState);
@@ -247,7 +247,7 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
             }
         }
 
-        private boolean handlePauseOrFinished(Row row, State rightState) {
+        private Result handlePauseOrFinished(Row row, State rightState) {
             switch (rightState) {
                 case PAUSED:
                     lastRow = row;
@@ -264,7 +264,7 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
                     }
                     LOGGER.trace("[{}] LEFT: done, returning false", phaseId);
                     done = true;
-                    return false;
+                    return Result.STOP;
                 default:
                     throw new AssertionError("lead election state should have been handled already");
             }
@@ -304,7 +304,7 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
         }
 
         @Override
-        public boolean setNextRow(final Row rightRow) {
+        public Result setNextRow(final Row rightRow) {
             receivedRows = true;
             if (leftIsSuspended) {
                 return emitRow(rightRow);
@@ -319,7 +319,7 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
                         upstream.pause();
                         state.set(State.PAUSED);
                         LOGGER.trace("[{}] RIGHT: pausing, left doesn't has any rows yet. Left state: {}", phaseId, leftState);
-                        return true;
+                        return Result.CONTINUE;
                     } else {
                         return handlePauseOrFinished(rightRow, waitForStateChange(left.state));
                     }
@@ -328,12 +328,12 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
             }
         }
 
-        private boolean handlePauseOrFinished(Row rightRow, State leftState) {
+        private Result handlePauseOrFinished(Row rightRow, State leftState) {
             switch (leftState) {
                 case FINISHED:
                     if (left.lastRow == null) {
                         // left never received a row
-                        return false;
+                        return Result.STOP;
                     }
                 case PAUSED:
                     leftIsSuspended = true;
@@ -343,16 +343,16 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
             }
         }
 
-        private boolean emitRow(Row row) {
+        private Result emitRow(Row row) {
             combinedRow.outerRow = left.lastRow;
             combinedRow.innerRow = row;
-            boolean wantsMore = downstream.setNextRow(combinedRow);
+            Result result = downstream.setNextRow(combinedRow);
             assert downstreamWantsMore : "shouldn't emit rows if downstream doesn't need anymore";
-            if (!wantsMore) {
+            if (result == Result.STOP) {
                 LOGGER.trace("[{}] downstream doesn't need any more rows", phaseId);
+                downstreamWantsMore = false;
             }
-            downstreamWantsMore = wantsMore;
-            return wantsMore;
+            return result;
         }
 
         @Override
@@ -375,17 +375,17 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
             return requirements;
         }
 
-        boolean resume(State rightState) {
+        Result resume(State rightState) {
             if (lastRow != null) {
-                boolean wantMore = emitRow(lastRow);
+                Result result = emitRow(lastRow);
                 lastRow = null;
                 if (paused) {
-                    return wantMore;
+                    return result;
                 }
-                if (!wantMore) {
+                if (result == Result.STOP) {
                     LOGGER.trace("[{}] LEFT - right resume - downstream doesn't need any more rows, return false", phaseId);
                     upstream.resume(false);
-                    return false;
+                    return Result.STOP;
                 }
             }
 
@@ -395,13 +395,13 @@ public class NestedLoopOperation implements RowUpstream, CompletionListenable {
                     upstream.repeat();
                 } else {
                     LOGGER.trace("[{}] LEFT - resume right - right finished and no rows: return false", phaseId);
-                    return false;
+                    return Result.STOP;
                 }
             } else {
                 LOGGER.trace("[{}] resume right on {}", phaseId, upstream);
                 upstream.resume(false);
             }
-            return true;
+            return Result.CONTINUE;
         }
     }
 

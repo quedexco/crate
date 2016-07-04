@@ -51,7 +51,7 @@ public abstract class ForwardingRowReceiver implements RowReceiver {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         return rowReceiver.setNextRow(row);
     }
 

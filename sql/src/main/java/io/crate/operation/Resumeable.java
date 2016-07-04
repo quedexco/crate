@@ -20,30 +20,9 @@
  * agreement.
  */
 
-package io.crate.operation.projectors;
+package io.crate.operation;
 
-import io.crate.core.collections.Row;
-import io.crate.core.collections.Row1;
+public interface Resumeable {
 
-public class MergeCountProjector extends AbstractProjector {
-
-    private long sum;
-
-    @Override
-    public Result setNextRow(Row row) {
-        Long count = (Long)row.get(0);
-        sum += count;
-        return Result.CONTINUE;
-    }
-
-    @Override
-    public void finish() {
-        downstream.setNextRow(new Row1(sum));
-        downstream.finish();
-    }
-
-    @Override
-    public void fail(Throwable throwable) {
-        downstream.fail(throwable);
-    }
+    void resume(boolean async);
 }

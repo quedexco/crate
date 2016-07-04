@@ -74,7 +74,7 @@ public class DistributingDownstream implements RowReceiver {
     private final AtomicInteger finishedDownstreams = new AtomicInteger(0);
     private final Bucket[] buckets;
 
-    private volatile boolean gatherMoreRows = true;
+    private volatile Result setNextRowResult = Result.CONTINUE;
     private volatile boolean killed = false;
     private boolean hasUpstreamFinished = false;
 
@@ -108,9 +108,9 @@ public class DistributingDownstream implements RowReceiver {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         if (killed) {
-            return false;
+            return Result.STOP;
         }
         multiBucketBuilder.add(row);
         synchronized (lock) {
@@ -125,7 +125,7 @@ public class DistributingDownstream implements RowReceiver {
                 }
             }
         }
-        return gatherMoreRows;
+        return setNextRowResult;
     }
 
     private void traceLog(String msg) {
@@ -162,7 +162,7 @@ public class DistributingDownstream implements RowReceiver {
     @Override
     public void fail(Throwable throwable) {
         failure.compareAndSet(null, throwable);
-        gatherMoreRows = false;
+        setNextRowResult = Result.STOP;
         upstreamFinished();
     }
 
@@ -248,7 +248,7 @@ public class DistributingDownstream implements RowReceiver {
 
         @Override
         public void onFailure(Throwable e) {
-            gatherMoreRows = false;
+            setNextRowResult = Result.STOP;
             onResponse(false);
         }
 
@@ -283,7 +283,7 @@ public class DistributingDownstream implements RowReceiver {
                 }
             } else {
                 if (finishedDownstreams.incrementAndGet() == downstreams.length) {
-                    gatherMoreRows = false;
+                    setNextRowResult = Result.STOP;
                 }
                 resume();
             }

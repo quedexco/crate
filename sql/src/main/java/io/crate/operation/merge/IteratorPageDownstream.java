@@ -101,20 +101,23 @@ public class IteratorPageDownstream implements PageDownstream {
     private void processBuckets(Iterator<Row> iterator, PageConsumeListener listener) {
         while (iterator.hasNext()) {
             Row row = iterator.next();
-            boolean wantMore = rowReceiver.setNextRow(row);
+            RowReceiver.Result result = rowReceiver.setNextRow(row);
             if (topRowUpstream.shouldPause()) {
                 topRowUpstream.pauseProcessed();
                 return;
             }
-            if (!wantMore) {
-                downstreamWantsMore = false;
+            switch (result) {
+                case CONTINUE:
+                    break;
+                case STOP:
+                    downstreamWantsMore = false;
 
-                if (upstreamHasMoreData.get()) {
-                    listener.finish();
-                } else {
-                    rowReceiver.finish();
-                }
-                return;
+                    if (upstreamHasMoreData.get()) {
+                        listener.finish();
+                    } else {
+                        rowReceiver.finish();
+                    }
+                    return;
             }
         }
         if (upstreamHasMoreData.get()) {

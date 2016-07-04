@@ -66,14 +66,20 @@ public class IterableRowEmitter implements Runnable {
     @Override
     public void run() {
         try {
+            loop:
             while (rowsIt.hasNext()) {
-                boolean wantsMore = rowReceiver.setNextRow(rowsIt.next());
-                if (!wantsMore) {
-                    break;
-                }
+                RowReceiver.Result result = rowReceiver.setNextRow(rowsIt.next());
                 if (topRowUpstream.shouldPause()) {
                     topRowUpstream.pauseProcessed();
                     return;
+                }
+                switch (result) {
+                    case CONTINUE:
+                        break;
+                    case STOP:
+                        break loop;
+                    default:
+                        throw new AssertionError("Unrecognized setNextRow result: " + result);
                 }
             }
             rowReceiver.finish();

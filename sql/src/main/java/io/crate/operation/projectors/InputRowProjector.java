@@ -37,7 +37,7 @@ import java.util.List;
  */
 public class InputRowProjector extends AbstractProjector {
 
-    protected final InputRow inputRow;
+    private final InputRow inputRow;
     protected final Iterable<? extends CollectExpression<Row, ?>> collectExpressions;
 
     public InputRowProjector(List<Input<?>> inputs,
@@ -47,7 +47,7 @@ public class InputRowProjector extends AbstractProjector {
     }
 
     @Override
-    public boolean setNextRow(Row row) {
+    public Result setNextRow(Row row) {
         for (CollectExpression<Row, ?> collectExpression : collectExpressions) {
             collectExpression.setNextRow(row);
         }
