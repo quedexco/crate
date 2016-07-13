@@ -58,7 +58,7 @@ public class PostgresITest extends SQLTransportIntegrationTest {
         if ((nodeOrdinal + 1) % 2 == 0) {
             builder.put("psql.port", "4242");
         } else {
-            builder.put(TransportBaseSQLAction.NODE_READ_ONLY_SETTING, true);
+            builder.put(TransportBaseSQLAction.NODE_READ_ONLY_SETTING, false);
             builder.put("psql.port", "4243");
         }
         return builder.build();
@@ -316,6 +316,20 @@ public class PostgresITest extends SQLTransportIntegrationTest {
             assertThat(resultSet.getString(1), is("insert into t(a,b) values(null, 'test')"));
             assertThat(resultSet.getString(2), is("Cannot insert null value for column a"));
             conn.createStatement().execute("reset global stats.enabled");
+        }
+    }
+
+    @Test
+    public void testArrayType() throws Exception {
+        execute("create table t (o array(object as (x array(int))))");
+        ensureYellow();
+        execute("insert into t (o) values ([{x = [10, 20]}])");
+        execute("refresh table t");
+
+        try (Connection conn = DriverManager.getConnection(JDBC_POSTGRESQL_URL)) {
+            ResultSet resultSet = conn.createStatement().executeQuery("select o['x'] from t");
+            assertThat(resultSet.next(), is(true));
+            Array array = resultSet.getArray(1);
         }
     }
 

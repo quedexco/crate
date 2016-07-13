@@ -25,9 +25,11 @@ package io.crate.protocols.postgres.types;
 import com.carrotsearch.hppc.IntObjectHashMap;
 import com.carrotsearch.hppc.IntObjectMap;
 import com.google.common.collect.ImmutableMap;
+import io.crate.types.CollectionType;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 
+import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.Map;
 
@@ -44,6 +46,10 @@ public class PGTypes {
         .put(DataTypes.DOUBLE, new DoubleType())
         .put(DataTypes.TIMESTAMP, new TimestampType())
         .put(DataTypes.IP, new VarCharType()) // postgres has no IP type, so map it to varchar - it matches the client representation
+        .build();
+
+    private static final Map<DataType, Integer> ARRAY_TYPES = ImmutableMap.<DataType, Integer>builder()
+        .put(DataTypes.INTEGER, 1007)
         .build();
 
     private static final IntObjectMap<DataType> PG_TYPES_TO_CRATE_TYPE = new IntObjectHashMap<DataType>()
@@ -66,9 +72,26 @@ public class PGTypes {
     public static PGType get(DataType type) {
         PGType pgType = CRATE_TO_PG_TYPES.get(type);
         if (pgType == null) {
-            throw new IllegalArgumentException(String.format(Locale.ENGLISH,
-                "No type mapping from '%s' to pg_type", type.getName()));
+            pgType = getArrayType(type);
+            if (pgType == null) {
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                    "No type mapping from '%s' to pg_type", type.getName()));
+            }
         }
         return pgType;
+    }
+
+    @Nullable
+    private static PGType getArrayType(DataType type) {
+        if (!(type instanceof CollectionType)) {
+            return null;
+        }
+        int dimensions = 1;
+        DataType<?> innerType = ((CollectionType) type).innerType();
+        while (innerType instanceof CollectionType) {
+            dimensions++;
+            innerType = ((CollectionType) innerType).innerType();
+        }
+        return new ArrayType(ARRAY_TYPES.get(innerType), dimensions);
     }
 }
