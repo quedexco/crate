@@ -23,6 +23,7 @@
 package io.crate.analyze;
 
 import io.crate.analyze.relations.QueriedDocTable;
+import io.crate.analyze.relations.QueriedRelation;
 import io.crate.exceptions.AmbiguousColumnAliasException;
 import io.crate.operation.scalar.ScalarFunctionModule;
 import io.crate.testing.MockedClusterServiceModule;
@@ -59,19 +60,17 @@ public class SubSelectAnalyzerTest extends BaseAnalyzerTest {
     public void testSimpleSubSelect() throws Exception {
         SelectAnalyzedStatement statement = analyze(
             "select aliased_sub.x / aliased_sub.i from (select x, i from t1) as aliased_sub");
-        QueriedSelectRelation relation = (QueriedSelectRelation) statement.relation();
+        QueriedDocTable relation = (QueriedDocTable) statement.relation();
         assertThat(relation.fields().size(), is(1));
         assertThat(relation.fields().get(0), isField("(x / i)"));
-
-        QueriedDocTable docTable = (QueriedDocTable) relation.relation();
-        assertThat(docTable.tableRelation().tableInfo(), is(T1_INFO));
+        assertThat(relation.tableRelation().tableInfo(), is(T1_INFO));
     }
 
     @Test
     public void testSimpleSubSelectWithMixedCases() throws Exception {
         SelectAnalyzedStatement statement = analyze(
             "select aliased_sub.A from (select a from t1) as aliased_sub");
-        QueriedSelectRelation relation = (QueriedSelectRelation) statement.relation();
+        QueriedDocTable relation = (QueriedDocTable) statement.relation();
         assertThat(relation.fields().size(), is(1));
         assertThat(relation.fields().get(0), isField("a"));
     }
@@ -86,26 +85,25 @@ public class SubSelectAnalyzerTest extends BaseAnalyzerTest {
     @Test
     public void testSubSelectWithNestedAlias() throws Exception {
         SelectAnalyzedStatement statement = analyze(
-            "select aliased_sub.id from (select a as id from t1) as aliased_sub");
-        QueriedSelectRelation relation = (QueriedSelectRelation) statement.relation();
+            "select aliased_sub.id from (select a as id, x from t1) as aliased_sub");
+        QueriedDocTable relation = (QueriedDocTable) statement.relation();
         assertThat(relation.fields().size(), is(1));
         assertThat(relation.fields().get(0), isField("id"));
-
-        QueriedDocTable docTable = (QueriedDocTable) relation.relation();
-        assertThat(docTable.tableRelation().tableInfo(), is(T1_INFO));
+        assertThat(relation.tableRelation().tableInfo(), is(T1_INFO));
     }
 
     @Test
     public void testNestedSubSelect() throws Exception {
         SelectAnalyzedStatement statement = analyze(
             "select aliased_sub.a from (select nested_sub.a from (select a from t1) as nested_sub) as aliased_sub");
-        QueriedSelectRelation relation = (QueriedSelectRelation) statement.relation();
+        QueriedDocTable relation = (QueriedDocTable) statement.relation();
         assertThat(relation.fields().size(), is(1));
         assertThat(relation.fields().get(0), isField("a"));
     }
 
     @Test
     public void testSubSelectWithJoins() throws Exception {
+        // unsupported?
         SelectAnalyzedStatement statement = analyze(
             "select aliased_sub.a, aliased_sub.b from (select t1.a, t2.b from t1, t2) as aliased_sub");
         QueriedSelectRelation relation = (QueriedSelectRelation) statement.relation();
@@ -122,6 +120,5 @@ public class SubSelectAnalyzerTest extends BaseAnalyzerTest {
         expectedException.expect(AmbiguousColumnAliasException.class);
         expectedException.expectMessage("Column alias \"i\" is ambiguous");
         analyze("select aliased_sub.i, aliased_sub.b from (select t1.i, t2.i, t2.b from t1, t2) as aliased_sub");
-
     }
 }
