@@ -25,6 +25,7 @@ package io.crate.protocols.postgres.types;
 import com.carrotsearch.hppc.IntObjectHashMap;
 import com.carrotsearch.hppc.IntObjectMap;
 import com.google.common.collect.ImmutableMap;
+import io.crate.types.ArrayType;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 
@@ -44,6 +45,7 @@ public class PGTypes {
         .put(DataTypes.DOUBLE, new DoubleType())
         .put(DataTypes.TIMESTAMP, new TimestampType())
         .put(DataTypes.IP, new VarCharType()) // postgres has no IP type, so map it to varchar - it matches the client representation
+        .put(new ArrayType(DataTypes.INTEGER), new PGArray(1007, new IntegerType()))
         .build();
 
     private static final IntObjectMap<DataType> PG_TYPES_TO_CRATE_TYPE = new IntObjectHashMap<DataType>()
@@ -57,6 +59,7 @@ public class PGTypes {
         put(BigIntType.OID, DataTypes.LONG);
         put(RealType.OID, DataTypes.FLOAT);
         put(DoubleType.OID, DataTypes.DOUBLE);
+        put(1007, new ArrayType(DataTypes.INTEGER));
     }};
 
     public static DataType fromOID(int oid) {

@@ -107,6 +107,29 @@ public class PostgresITest extends SQLTransportIntegrationTest {
     }
 
     @Test
+    public void testArrayTypeSupport() throws Exception {
+        try (Connection conn = DriverManager.getConnection(JDBC_POSTGRESQL_URL)) {
+            conn.createStatement().executeUpdate("create table t (x array(int)) with (number_of_replicas = 0)");
+
+            conn.createStatement().executeUpdate("insert into t (x) values ([10, 20])");
+            conn.createStatement().executeUpdate("refresh table t");
+
+            PreparedStatement preparedStatement = conn.prepareStatement("insert into t (x) values (?)");
+            preparedStatement.setArray(1, conn.createArrayOf("int4", new Integer[] { 10, 20 }));
+            preparedStatement.executeUpdate();
+
+            assertThat(((Object[]) execute("select x from t").rows()[0][0]), is(new Object[] { 10, 20 }));
+
+            ResultSet resultSet = conn.createStatement().executeQuery("select x from t");
+            assertThat(resultSet.next(), is(true));
+
+            Object object = resultSet.getObject(1);
+            object = ((Array) object).getArray();
+            assertThat((Object[]) object, is(new Object[] { 10, 20 }));
+        }
+    }
+
+    @Test
     public void testFetchSize() throws Exception {
         try (Connection conn = DriverManager.getConnection(JDBC_POSTGRESQL_URL)) {
             conn.createStatement().executeUpdate("create table t (x int) with (number_of_replicas = 0)");
@@ -173,7 +196,6 @@ public class PostgresITest extends SQLTransportIntegrationTest {
     public void testExecuteBatchWithDifferentStatements() throws Exception {
         try (Connection conn = DriverManager.getConnection(JDBC_POSTGRESQL_URL)) {
             conn.setAutoCommit(true);
-
             Statement stmt = conn.createStatement();
             stmt.executeUpdate("create table t (x int) with (number_of_replicas = 0)");
             ensureYellow();
